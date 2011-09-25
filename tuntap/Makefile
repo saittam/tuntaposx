@@ -53,3 +53,7 @@ tap.kext:
 tun.kext:
 	cd src/tun && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
 
+test:
+	-PYTHONPATH=test python test/tuntap/tuntap_tests.py --tests='$(TESTS)'
+
+.PHONY: test
