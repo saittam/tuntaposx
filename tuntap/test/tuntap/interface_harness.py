@@ -155,7 +155,7 @@ class InterfaceHarness(object):
         Set an interface address.
 
         Args:
-            addr: local address.
+            local: local address.
             dst: broadcast address or destination address, respectively.
             mask: the netmask.
         """

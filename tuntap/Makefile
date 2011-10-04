@@ -54,6 +54,13 @@ tun.kext:
 	cd src/tun && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
 
 test:
+	# configd messes with interface flags, issuing SIOCSIFFLAGS ioctls upon receiving kernel
+	# events indicating protocols have been attached and detached. Unfortunately, configd does
+	# this asynchronously, making the SIOCSIFFLAGS changes totally unpredictable when we bring
+	# our interfaces up and down in rapid succession during our tests. I haven't found a good
+	# way to suppress or handle this mess other than disabling configd temporarily.
+	killall -STOP configd
 	-PYTHONPATH=test python test/tuntap/tuntap_tests.py --tests='$(TESTS)'
+	killall -CONT configd
 
 .PHONY: test
