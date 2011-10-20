@@ -24,7 +24,7 @@ import functools
 import socket
 from unittest import TestCase
 
-from tuntap.packet import IPv4Packet, UDPPacket
+from tuntap.packet import IPv4Packet, IPv6Packet, UDPPacket
 
 class TestIO(TestCase):
 
@@ -68,6 +68,38 @@ class TestIp(TestIO):
         packet = IPv4Packet(proto = IPv4Packet.PROTO_UDP,
                             src = socket.inet_aton(self._codec.addr.remote),
                             dst = socket.inet_aton(self._codec.addr.local),
+                            payload = UDPPacket(src = srcport,
+                                                dst = self._codec.UDPPort,
+                                                payload = payload))
+        self._codec.sendPacket(packet.encode())
+        self._codec.expectUDP(payload)
+        self.assertTrue(self._codec.runUDP())
+
+
+class TestIp6(TestIO):
+
+    def __init__(self, name, codec):
+        super(TestIp6, self).__init__(name, socket.AF_INET6, codec)
+
+    def test_Send(self):
+        payload = 'knock, knock!'
+        port = 12345
+        self._codec.sendUDP(payload, (self._codec.addr.remote, port))
+        self._codec.expectPacket(
+            { 'version': 6,
+              'src': socket.inet_pton(self._codec.af, self._codec.addr.local),
+              'dst': socket.inet_pton(self._codec.af, self._codec.addr.remote),
+              'proto': IPv6Packet.PROTO_UDP,
+              'payload': { 'dst': port,
+                           'payload': payload } })
+        self.assertTrue(self._codec.runPacket())
+
+    def test_Recv(self):
+        srcport = 23456
+        payload = 'who\'s there?'
+        packet = IPv6Packet(proto = IPv6Packet.PROTO_UDP,
+                            src = socket.inet_pton(self._codec.af, self._codec.addr.remote),
+                            dst = socket.inet_pton(self._codec.af, self._codec.addr.local),
                             payload = UDPPacket(src = srcport,
                                                 dst = self._codec.UDPPort,
                                                 payload = payload))

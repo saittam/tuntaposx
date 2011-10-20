@@ -24,7 +24,17 @@ import functools
 import socket
 
 from tuntap.tun_tap_harness import TunHarness, TapHarness
-from tuntap.packet import ARPPacket, EthernetFrame, IPv4Packet, TunAFFrame, UDPPacket
+from tuntap.packet import (
+    ARPPacket,
+    EthernetFrame,
+    ICMPV6Packet,
+    ICMPV6NeighborAdvertisement,
+    ICMPV6NeighborSolicitation,
+    IPv4Packet,
+    IPv6Packet,
+    TunAFFrame,
+    UDPPacket
+)
 from tuntap.packet_reader import PacketReader, UDPSocketPacketSource
 
 class PacketCodec(object):
@@ -121,6 +131,8 @@ class TunPacketCodec(PacketCodec):
         version = (ord(packet[0]) & 0xf0) >> 4
         if version == 4:
             return IPv4Packet(packet)
+        elif version == 6:
+            return IPv6Packet(packet)
         else:
             return packet
 
@@ -185,6 +197,24 @@ class TapPacketCodec(PacketCodec):
                                                   tpa = packet.payload.spa))
         self._harness.char_dev.send(reply.encode())
 
+    def _sendNeighborAdvertisement(self, packet):
+        reply = EthernetFrame(
+                    dst = packet.payload.payload.payload.src_lladdr,
+                    src = TapPacketCodec.ETHER_ADDR_ANY,
+                    type = EthernetFrame.TYPE_IPV6,
+                    payload = IPv6Packet(
+                        src = socket.inet_pton(self.addr.af, self.addr.remote),
+                        dst = packet.payload.src,
+                        proto = IPv6Packet.PROTO_ICMPV6,
+                        payload = ICMPV6Packet(
+                            type = ICMPV6Packet.TYPE_NEIGHBOR_ADVERTISMENT,
+                            payload = ICMPV6NeighborAdvertisement(
+                                solicited = 1,
+                                override = 1,
+                                target = socket.inet_pton(self.addr.af, self.addr.remote),
+                                target_lladdr = TapPacketCodec.ETHER_ADDR_REMOTE))))
+        self._harness.char_dev.send(reply.encode())
+
     def start(self):
         super(TapPacketCodec, self).start()
         # Answer ARP resolution requests for the destination address.
@@ -198,3 +228,15 @@ class TapPacketCodec(PacketCodec):
                                          'tpa': socket.inet_pton(self.addr.af, self.addr.remote) }},
             times = None,
             action = functools.partial(TapPacketCodec._sendArpReply, self))
+        # Answer Neighbor Solicitation requests for IPv6.
+        self._reader.expect(
+            expectation = {
+                'type': EthernetFrame.TYPE_IPV6,
+                'payload': {
+                    'proto': IPv6Packet.PROTO_ICMPV6,
+                    'payload': {
+                        'type': ICMPV6Packet.TYPE_NEIGHBOR_SOLICITATION,
+                        'payload': {
+                            'target': socket.inet_pton(self.addr.af, self.addr.remote) }}}},
+            times = None,
+            action = functools.partial(TapPacketCodec._sendNeighborAdvertisement, self))

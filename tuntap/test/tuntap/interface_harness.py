@@ -20,12 +20,66 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import ctypes
+import ctypes.util
 import fcntl
 import socket
 import struct
 
 from tuntap import ioctl
-from tuntap.sockaddr import SockaddrIn, SockaddrIn6
+from tuntap.sockaddr import SockaddrDl, SockaddrIn, SockaddrIn6
+
+libc = ctypes.CDLL(ctypes.util.find_library('c'))
+
+class struct_sockaddr(ctypes.Structure):
+    _fields_ = [ ('sa_len', ctypes.c_uint8),
+                 ('sa_family', ctypes.c_uint8) ]
+
+class struct_ifaddrs(ctypes.Structure):
+    pass
+
+struct_ifaddrs._fields_ = [ ('ifa_next', ctypes.POINTER(struct_ifaddrs)),
+                            ('ifa_name', ctypes.c_char_p),
+                            ('ifa_flags', ctypes.c_uint),
+                            ('ifa_addr', ctypes.POINTER(struct_sockaddr)),
+                            ('ifa_netmask', ctypes.POINTER(struct_sockaddr)),
+                            ('ifa_dstaddr', ctypes.POINTER(struct_sockaddr)),
+                            ('ifa_data', ctypes.c_void_p) ]
+
+def decodeSockaddr(sockaddr):
+    if not sockaddr:
+        return None
+
+    data = ctypes.string_at(sockaddr, max(sockaddr.contents.sa_len, 16))
+    if sockaddr.contents.sa_family == SockaddrDl.AF_LINK:
+        return SockaddrDl.decode(data)
+    elif sockaddr.contents.sa_family == socket.AF_INET:
+        return SockaddrIn.decode(data)
+    elif sockaddr.contents.sa_family == socket.AF_INET6:
+        return SockaddrIn6.decode(data)
+
+    return None
+
+def getIfAddrs(ifname):
+    ifaddrs = (ctypes.POINTER(struct_ifaddrs))()
+    assert not libc.getifaddrs(ctypes.byref(ifaddrs))
+
+    addrs = []
+    try:
+        entry = ifaddrs
+        while entry:
+            ia = entry.contents
+            entry = ia.ifa_next
+            if ia.ifa_name != ifname:
+                continue
+
+            addrs.append((decodeSockaddr(ia.ifa_addr),
+                          decodeSockaddr(ia.ifa_netmask),
+                          decodeSockaddr(ia.ifa_dstaddr)))
+        return addrs
+    finally:
+        libc.freeifaddrs(ifaddrs)
+
 
 class Address(object):
     """
@@ -149,6 +203,22 @@ class InterfaceHarness(object):
             Full interface name.
         """
         return "%s%d" % (self._class_name, self._unit)
+
+    def getAddrs(self, af = None):
+        def check(addr):
+            if addr and addr.af == af:
+                return addr
+            else:
+                return None
+        return filter(lambda (a, n, d): a != None,
+                      map(lambda (a, n, d): (check(a), check(n), check(d)), getIfAddrs(self.name)))
+
+    @property
+    def lladdr(self):
+        entry = self.getAddrs(SockaddrDl.AF_LINK)
+        if entry:
+            return entry[0][0]
+        return None
 
     def addIfAddr(self, local, dst, mask):
         """

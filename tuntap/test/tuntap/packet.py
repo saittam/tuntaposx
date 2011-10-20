@@ -222,6 +222,7 @@ class Packet(object):
         self.__dict__.update(map(lambda x : (x, getattr(data, x)), self._names + ('payload',)))
         if isinstance(self.payload, str):
             self.payload = self._decodePayload(self.payload)
+        
 
     def encode(self):
         """
@@ -252,6 +253,8 @@ class TunAFFrame(Packet):
     def _decodePayload(self, data):
         if self.af == socket.AF_INET:
             return IPv4Packet(data)
+        elif self.af == socket.AF_INET6:
+            return IPv6Packet(data)
         return data
 
 
@@ -270,6 +273,8 @@ class EthernetFrame(Packet):
             return IPv4Packet(data)
         elif self.type == EthernetFrame.TYPE_ARP:
             return ARPPacket(data)
+        elif self.type == EthernetFrame.TYPE_IPV6:
+            return IPv6Packet(data)
         return data
 
 
@@ -361,6 +366,154 @@ class IPv4Packet(Packet):
             fields[10] = IPv4Packet.computeChecksum(header)
             header = self._encodeFields(*tuple(fields))
         return header + payload
+
+class IPv6Packet(Packet):
+
+    PROTO_ICMP = 1
+    PROTO_TCP = 6
+    PROTO_UDP = 17
+    PROTO_ICMPV6 = 58
+
+    class UDPPseudoHeader(Packet):
+
+        def __init__(self, data = None, **initializer):
+            super(IPv6Packet.UDPPseudoHeader, self).__init__('128s128s32n24s8n',
+                                                             ('src', 'dst',
+                                                              'length', 'padding', 'proto'),
+                                                             data, **initializer)
+
+
+    def __init__(self, data = None, **initializer):
+        super(IPv6Packet, self).__init__('4n8n20n16n8n8n128s128s',
+                                         ('version', 'traffic_class', 'flow_label',
+                                          'len', 'proto', 'hop_limit',
+                                          'src', 'dst'),
+                                         data, **initializer)
+
+    def _decodePayload(self, data):
+        if self.proto == IPv6Packet.PROTO_UDP:
+            return UDPPacket(data)
+        elif self.proto == IPv6Packet.PROTO_ICMPV6:
+            return ICMPV6Packet(data)
+        return data
+
+    def encode(self):
+        payload = self._encodePayload()
+        fields = [self.version or 6, self.traffic_class or 0, self.flow_label or 0,
+                  self.len or len(payload), self.proto, self.hop_limit or 255,
+                  self.src, self.dst]
+
+        # Need to compute checksum for UDP, ICMPV6 here since it includes the IPv6 pseudo header.
+        checksummedProtos = { IPv6Packet.PROTO_UDP: UDPPacket,
+                              IPv6Packet.PROTO_ICMPV6: ICMPV6Packet }
+        payloadClass = checksummedProtos.get(self.proto)
+        if (payloadClass != None and
+            issubclass(self.payload.__class__, payloadClass) and
+            self.payload.checksum == None):
+            
+            header = IPv6Packet.UDPPseudoHeader(src = self.src, dst = self.dst, length = fields[3],
+                                                proto = self.proto, payload = payload)
+            payload = payloadClass(data = self.payload,
+                                   checksum = IPv4Packet.computeChecksum(header.encode())).encode()
+
+        return self._encodeFields(*tuple(fields)) + payload
+
+
+class ICMPV6Packet(Packet):
+
+    TYPE_NEIGHBOR_SOLICITATION = 135
+    TYPE_NEIGHBOR_ADVERTISMENT = 136
+
+    def __init__(self, data = None, **initializer):
+        super(ICMPV6Packet, self).__init__('8n8n16n',
+                                           ('type', 'code', 'checksum'),
+                                           data, **initializer)
+                                        
+    def _decodePayload(self, data):
+        if self.type == ICMPV6Packet.TYPE_NEIGHBOR_SOLICITATION:
+            return ICMPV6NeighborSolicitation(data)
+        elif self.type == ICMPV6Packet.TYPE_NEIGHBOR_ADVERTISMENT:
+            return ICMPV6NeighborAdvertisement(data)
+        return data
+
+
+class ICMPV6NeighborDiscoveryOption(Packet):
+
+    TYPE_SOURCE_LINK_LAYER_ADDRESS = 1
+    TYPE_TARGET_LINK_LAYER_ADDRESS = 2
+
+    def __init__(self, data = None, **initializer):
+        super(ICMPV6NeighborDiscoveryOption, self).__init__('8n8n',
+                                                            ('type', 'length'),
+                                                            data, **initializer)
+
+    def encode(self):
+        payload = self._encodePayload()
+        length = self.length
+        if length == None:
+            length = (len(payload) + 2 + 7) / 8
+            payload += '\x00' * (length * 8 - len(payload) - 2)
+        fields = [self.type, length]
+        header = self._encodeFields(*tuple(fields))
+        return header + payload
+
+    @staticmethod
+    def decodeOptions(data):
+        options = []
+        while len(data) > 2:
+            type = ord(data[0])
+            length = ord(data[1])
+            if len(data) < length * 8:
+                break
+            options.append(ICMPV6NeighborDiscoveryOption(type = type, length = length,
+                                                         payload = data[0:length * 8]))
+            data = data[length * 8:]
+        return options
+
+
+class ICMPV6NeighborSolicitation(Packet):
+
+    def __init__(self, data = None, **initializer):
+        super(ICMPV6NeighborSolicitation, self).__init__('32s128s',
+                                                         ('reserved', 'target'),
+                                                         data, **initializer)
+        self.target_lladdr = initializer.get('src_lladdr')
+
+    def _decodePayload(self, data):
+        for option in ICMPV6NeighborDiscoveryOption.decodeOptions(data):
+            if option.type ==  ICMPV6NeighborDiscoveryOption.TYPE_SOURCE_LINK_LAYER_ADDRESS:
+                self.src_lladdr = option.payload
+        return None
+
+    def _encodePayload(self):
+        if self.src_lladdr:
+            return ICMPV6NeighborDiscoveryOption(
+                type = ICMPV6NeighborDiscoveryOption.TYPE_SOURCE_LINK_LAYER_ADDRESS,
+                payload = self.src_lladdr).encode()
+        return ''
+
+
+class ICMPV6NeighborAdvertisement(Packet):
+
+    def __init__(self, data = None, **initializer):
+        super(ICMPV6NeighborAdvertisement, self).__init__('1n1n1n29s128s',
+                                                          ('router', 'solicited', 'override',
+                                                           'reserved', 'target'),
+                                                          data, **initializer)
+        self.target_lladdr = initializer.get('target_lladdr')
+
+    def _decodePayload(self, data):
+        for option in ICMPV6NeighborDiscoveryOptions.decodeOptions(data):
+            if option.type ==  ICMPV6NeighborDiscoveryOption.TYPE_TARGET_LINK_LAYER_ADDRESS:
+                self.target_lladdr = option.payload
+        return None
+
+    def _encodePayload(self):
+        if self.target_lladdr:
+            return ICMPV6NeighborDiscoveryOption(
+                type = ICMPV6NeighborDiscoveryOption.TYPE_TARGET_LINK_LAYER_ADDRESS,
+                payload = self.target_lladdr).encode()
+        return ''
 
 
 class UDPPacket(Packet):

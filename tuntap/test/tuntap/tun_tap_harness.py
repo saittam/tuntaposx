@@ -24,6 +24,7 @@ import socket
 
 from tuntap.char_dev_harness import TunCharDevHarness, TapCharDevHarness
 from tuntap.interface_harness import Address, InterfaceHarness
+import tuntap.route
 
 class TunTapHarness(object):
 
@@ -45,6 +46,9 @@ class TunTapHarness(object):
         self.interface.addIfAddr6(local = self.addr6.sa_local,
                                   dst = self.addr6.sa_dst,
                                   mask = self.addr6.sa_mask)
+        tuntap.route.addNet(dst = self.addr6.sa_remote,
+                            netmask = self.addr6.sa_mask,
+                            interface = self.interface.lladdr)
         self.interface.flags |= InterfaceHarness.IFF_UP
 
     def stop(self):
