@@ -43,8 +43,9 @@ class PacketCodec(object):
     receive packets at the IP/IPv6 level on both the network interface and char dev sides.
     """
 
-    def __init__(self, af, newHarness, newPacketSource):
+    def __init__(self, af, listenAddress, newHarness, newPacketSource):
         self._af = af
+        self._listenAddress = listenAddress
         self._newHarness = newHarness
         self._newPacketSource = newPacketSource
 
@@ -90,7 +91,7 @@ class PacketCodec(object):
                                     skip = True,
                                     decode = lambda packet : self._decodePacket(packet))
 
-        udpSource = UDPSocketPacketSource(self.addr.af, (self.addr.local, 0))
+        udpSource = UDPSocketPacketSource(self.addr.af, (self._listenAddress or self.addr.local, 0))
         self._listenPort = udpSource.addr[1]
         self._sockReader = PacketReader(source = udpSource)
 
@@ -123,8 +124,8 @@ class PacketCodec(object):
 
 class TunPacketCodec(PacketCodec):
     
-    def __init__(self, af, newPacketSource):
-        super(TunPacketCodec, self).__init__(af, TunHarness, newPacketSource)
+    def __init__(self, af, listenAddress, newPacketSource):
+        super(TunPacketCodec, self).__init__(af, listenAddress, TunHarness, newPacketSource)
 
     def _decodePacket(self, packet):
         # Look at the first byte to figure out whether it's IPv4 or IPv6.
@@ -139,8 +140,8 @@ class TunPacketCodec(PacketCodec):
 
 class TunAFPacketCodec(PacketCodec):
     
-    def __init__(self, af, newPacketSource):
-        super(TunAFPacketCodec, self).__init__(af, TunHarness, newPacketSource)
+    def __init__(self, af, listenAddress, newPacketSource):
+        super(TunAFPacketCodec, self).__init__(af, listenAddress, TunHarness, newPacketSource)
 
     def _decodePacket(self, packet):
         return TunAFFrame(packet)
@@ -165,8 +166,8 @@ class TapPacketCodec(PacketCodec):
     ETHER_ADDR_ANY = '\xff\xff\xff\xff\xff\xff'
     ETHER_ADDR_REMOTE = '\x11\x22\x33\x44\x55\x66'
     
-    def __init__(self, af, newPacketSource):
-        super(TapPacketCodec, self).__init__(af, TapHarness, newPacketSource)
+    def __init__(self, af, listenAddress, newPacketSource):
+        super(TapPacketCodec, self).__init__(af, listenAddress, TapHarness, newPacketSource)
 
     def _decodePacket(self, packet):
         return EthernetFrame(packet)
@@ -178,8 +179,7 @@ class TapPacketCodec(PacketCodec):
                              payload = payload).encode()
 
     def _frameExpectation(self, expectation):
-        return { 'dst': TapPacketCodec.ETHER_ADDR_REMOTE,
-                 'type': TapPacketCodec.TYPE_MAP[self.addr.af],
+        return { 'type': TapPacketCodec.TYPE_MAP[self.addr.af],
                  'payload': expectation }
 
     def _sendArpReply(self, packet):
