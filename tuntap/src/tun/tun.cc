@@ -320,7 +320,7 @@ tun_interface::if_check_multi(const struct sockaddr *maddr)
 	if (maddr->sa_family == AF_INET) {
 		struct sockaddr_in *imaddr = (struct sockaddr_in *) maddr;
 
-		if (IN_MULTICAST(imaddr->sin_addr.s_addr))
+		if (IN_MULTICAST(ntohl(imaddr->sin_addr.s_addr)))
 			return 0;
 		else
 			return EADDRNOTAVAIL;
