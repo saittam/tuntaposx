@@ -56,8 +56,8 @@ class TestIp(TestIO):
         self._codec.sendUDP(payload, (self._codec.addr.remote, port))
         self._codec.expectPacket(
             { 'version': 4,
-              'src': socket.inet_aton(self._codec.addr.local),
-              'dst': socket.inet_aton(self._codec.addr.remote),
+              'src': socket.inet_pton(self._codec.af, self._codec.addr.local),
+              'dst': socket.inet_pton(self._codec.af, self._codec.addr.remote),
               'proto': IPv4Packet.PROTO_UDP,
               'payload': { 'dst': port,
                            'payload': payload } })
@@ -67,8 +67,8 @@ class TestIp(TestIO):
         srcport = 23456
         payload = 'who\'s there?'
         packet = IPv4Packet(proto = IPv4Packet.PROTO_UDP,
-                            src = socket.inet_aton(self._codec.addr.remote),
-                            dst = socket.inet_aton(self._codec.addr.local),
+                            src = socket.inet_pton(self._codec.af, self._codec.addr.remote),
+                            dst = socket.inet_pton(self._codec.af, self._codec.addr.local),
                             payload = UDPPacket(src = srcport,
                                                 dst = self._codec.UDPPort,
                                                 payload = payload))
@@ -144,8 +144,52 @@ class TestMulticast(TestIO):
         srcport = 23456
         payload = 'who\'s there?'
         packet = IPv4Packet(proto = IPv4Packet.PROTO_UDP,
-                            src = socket.inet_aton(self._codec.addr.remote),
-                            dst = socket.inet_aton(TestMulticast.MULTICAST_GROUP),
+                            src = socket.inet_pton(self._codec.af, self._codec.addr.remote),
+                            dst = socket.inet_pton(self._codec.af, TestMulticast.MULTICAST_GROUP),
+                            payload = UDPPacket(src = srcport,
+                                                dst = self._codec.UDPPort,
+                                                payload = payload))
+        self._codec.sendPacket(packet.encode())
+        self._codec.expectUDP(payload)
+        self.assertTrue(self._codec.runUDP())
+
+
+class TestMulticast6(TestIO):
+
+    MULTICAST_GROUP = 'ff05::114'
+
+    def __init__(self, name, codec):
+        super(TestMulticast6, self).__init__(name, socket.AF_INET6, TestMulticast6.MULTICAST_GROUP,
+                                             codec)
+
+    def setUp(self):
+        super(TestMulticast6, self).setUp()
+        mreq = struct.pack('16sI',
+                           socket.inet_pton(self._codec.af, TestMulticast6.MULTICAST_GROUP),
+                           self._codec._harness.interface.index)
+        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
+        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
+        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF,
+                                     self._codec._harness.interface.index)
+
+    def test_Send(self):
+        payload = 'knock, knock!'
+        port = 12345
+        self._codec.sendUDP(payload, (TestMulticast6.MULTICAST_GROUP, port))
+        self._codec.expectPacket(
+            { 'version': 6,
+              'dst': socket.inet_pton(self._codec.af, TestMulticast6.MULTICAST_GROUP),
+              'proto': IPv6Packet.PROTO_UDP,
+              'payload': { 'dst': port,
+                           'payload': payload } })
+        self.assertTrue(self._codec.runPacket())
+
+    def test_Recv(self):
+        srcport = 23456
+        payload = 'who\'s there?'
+        packet = IPv6Packet(proto = IPv6Packet.PROTO_UDP,
+                            src = socket.inet_pton(self._codec.af, self._codec.addr.remote),
+                            dst = socket.inet_pton(self._codec.af, TestMulticast6.MULTICAST_GROUP),
                             payload = UDPPacket(src = srcport,
                                                 dst = self._codec.UDPPort,
                                                 payload = payload))

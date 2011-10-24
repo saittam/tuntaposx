@@ -81,6 +81,14 @@ def getIfAddrs(ifname):
         libc.freeifaddrs(ifaddrs)
 
 
+def ifNameToIndex(ifname):
+    libc.if_nametoindex.restype = ctypes.c_uint
+    index = libc.if_nametoindex(ifname)
+    if not index:
+        raise OSError(ctypes.get_errno)
+    return index
+
+
 class Address(object):
     """
     Wraps address parameters for an interface.
@@ -203,6 +211,16 @@ class InterfaceHarness(object):
             Full interface name.
         """
         return "%s%d" % (self._class_name, self._unit)
+
+    @property
+    def index(self):
+        """
+        Gets the interface index.
+
+        Returns:
+            Interface index.
+        """
+        return ifNameToIndex(self.name)
 
     def getAddrs(self, af = None):
         def check(addr):

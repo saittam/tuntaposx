@@ -31,7 +31,7 @@ from tuntap.packet_reader import BlockingPacketSource, SelectPacketSource
 
 from tuntap.test_char_dev import TestTunCharDev, TestTapCharDev
 from tuntap.test_interface import TestTunInterface, TestTapInterface
-from tuntap.test_ip import TestIp, TestIp6, TestMulticast
+from tuntap.test_ip import TestIp, TestIp6, TestMulticast, TestMulticast6
 
 class FilteringTestSuite(unittest.TestSuite):
 
@@ -66,7 +66,7 @@ def main(argv):
 
     codecs = (TunPacketCodec, TunAFPacketCodec, TapPacketCodec)
     sources = (SelectPacketSource, BlockingPacketSource)
-    tests = (TestIp, TestIp6, TestMulticast)
+    tests = (TestIp, TestIp6, TestMulticast, TestMulticast6)
     for (test, codec, source) in [ (test, codec, source) for test in tests
                                                          for codec in codecs
                                                          for source in sources ]:
