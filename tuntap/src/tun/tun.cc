@@ -324,6 +324,13 @@ tun_interface::if_check_multi(const struct sockaddr *maddr)
 			return 0;
 		else
 			return EADDRNOTAVAIL;
+	} else if (maddr->sa_family == AF_INET6) {
+		struct sockaddr_in6 *imaddr = (struct sockaddr_in6 *) maddr;
+
+		if (IN6_IS_ADDR_MULTICAST(&imaddr->sin6_addr))
+			return 0;
+		else
+			return EADDRNOTAVAIL;
 	}
 
 	return EOPNOTSUPP;
