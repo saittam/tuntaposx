@@ -130,10 +130,7 @@ class InterfaceHarness(object):
 
     SIOCAIFADDR = ioctl.IOC(ioctl.OUT, 'i', 26, '16s16s16s16s')
     SIOCAIFADDR_IN6 = ioctl.IOC(ioctl.OUT, 'i', 26, '16s28s28s28sIQQII')
-    SIOCGIFADDR = ioctl.IOC(ioctl.INOUT, 'i', 33, '16s16s')
-    SIOCGIFDSTADDR = ioctl.IOC(ioctl.INOUT, 'i', 34, '16s16s')
-    SIOCGIFBRDADDR = ioctl.IOC(ioctl.INOUT, 'i', 35, '16s16s')
-    SIOCGIFNETMASK = ioctl.IOC(ioctl.INOUT, 'i', 37, '16s16s')
+    SIOCSIFLLADDR = ioctl.IOC(ioctl.OUT, 'i', 60, '16s16s')
 
     IFF_UP          = 0x1
     IFF_BROADCAST   = 0x2
@@ -190,7 +187,8 @@ class InterfaceHarness(object):
         Returns:
             The interface flags.
         """
-        return self._ioctl(socket.AF_INET, self.SIOCGIFFLAGS, '16sH', (self.name, 0))[1]
+        return self._ioctl(socket.AF_INET, InterfaceHarness.SIOCGIFFLAGS,
+                           '16sH', (self.name, 0))[1]
 
     @flags.setter
     def flags(self, flags):
@@ -200,7 +198,8 @@ class InterfaceHarness(object):
         Args:
             flags: new interface flags.
         """
-        self._ioctl(socket.AF_INET, self.SIOCSIFFLAGS, '16sH', (self.name, flags))
+        self._ioctl(socket.AF_INET, InterfaceHarness.SIOCSIFFLAGS,
+                    '16sH', (self.name, flags))
 
     @property
     def name(self):
@@ -238,6 +237,11 @@ class InterfaceHarness(object):
             return entry[0][0]
         return None
 
+    @lladdr.setter
+    def lladdr(self, addr):
+        self._ioctl(socket.AF_INET, InterfaceHarness.SIOCSIFLLADDR,
+                    '16sBB14s', (self.name, len(addr.addr), addr.af, addr.addr))
+
     def addIfAddr(self, local, dst, mask):
         """
         Set an interface address.
@@ -247,28 +251,8 @@ class InterfaceHarness(object):
             dst: broadcast address or destination address, respectively.
             mask: the netmask.
         """
-        self._ioctl(socket.AF_INET, self.SIOCAIFADDR, '16s16s16s16s',
-                    (self.name, local.encode(), dst.encode(), mask.encode()))
-
-    @property
-    def addr(self):
-        return SockaddrIn.decode(self._ioctl(socket.AF_INET, self.SIOCGIFADDR,
-                                             '16s16s', (self.name, ''))[1])
-
-    @property
-    def broadaddr(self):
-        return SockaddrIn.decode(self._ioctl(socket.AF_INET, self.SIOCGIFBRDADDR,
-                                             '16s16s', (self.name, ''))[1])
-
-    @property
-    def dstaddr(self):
-        return SockaddrIn.decode(self._ioctl(socket.AF_INET, self.SIOCGIFDSTADDR,
-                                             '16s16s', (self.name, ''))[1])
-
-    @property
-    def mask(self):
-        return SockaddrIn.decode(self._ioctl(socket.AF_INET, self.SIOCGIFNETMASK,
-                                             '16s16s', (self.name, ''))[1])
+        self._ioctl(socket.AF_INET, InterfaceHarness.SIOCAIFADDR,
+                    '16s16s16s16s', (self.name, local.encode(), dst.encode(), mask.encode()))
 
     def addIfAddr6(self, local, dst, mask):
         """
@@ -279,6 +263,7 @@ class InterfaceHarness(object):
             dst: destination address.
             mask: the netmask.
         """
-        self._ioctl(socket.AF_INET6, self.SIOCAIFADDR_IN6, '16s28s28s28sIQQII',
+        self._ioctl(socket.AF_INET6, InterfaceHarness.SIOCAIFADDR_IN6,
+                    '16s28s28s28sIQQII',
                     (self.name, local.encode(), dst.encode(), mask.encode(),
                      0, 0, 0, 0xffffffff, 0xffffffff))

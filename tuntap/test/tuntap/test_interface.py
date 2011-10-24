@@ -26,7 +26,7 @@ import unittest
 
 from tuntap.char_dev_harness import TunCharDevHarness, TapCharDevHarness
 from tuntap.interface_harness import Address, InterfaceHarness
-from tuntap.sockaddr import SockaddrIn, SockaddrIn6
+from tuntap.sockaddr import SockaddrDl, SockaddrIn, SockaddrIn6
 from tuntap.tun_tap_harness import TunHarness, TapHarness
 
 class TestInterface(unittest.TestCase):
@@ -58,15 +58,35 @@ class TestInterface(unittest.TestCase):
         self.harness.interface.addIfAddr(local = self.harness.addr.sa_local,
                                          dst = self.harness.addr.sa_dst,
                                          mask = SockaddrIn(af = 0, addr = self.harness.addr.mask))
-        self.assertEquals(socket.AF_INET, self.harness.interface.mask.af)
+        for addr in self.harness.interface.getAddrs(socket.AF_INET):
+            if addr[1] == self.harness.addr.sa_mask:
+                return;
+        self.fail()
+
+    def test_Address(self):
+        self.harness.interface.addIfAddr(local = self.harness.addr.sa_local,
+                                         dst = self.harness.addr.sa_dst,
+                                         mask = self.harness.addr.sa_mask)
+        for addr in self.harness.interface.getAddrs(socket.AF_INET):
+            if (addr[0] == self.harness.addr.sa_local and
+                addr[1] == self.harness.addr.sa_mask and
+                addr[2] == self.harness.addr.sa_dst):
+                return
+        self.fail()
 
     def test_Address6(self):
+        def compare(expected, actual):
+            return (expected or SockaddrIn6(af = 0, addr = None)) == actual
+
         self.harness.interface.addIfAddr6(local = self.harness.addr6.sa_local,
                                           dst = self.harness.addr6.sa_dst,
                                           mask = self.harness.addr6.sa_mask)
-        # Ideally, we'd check whether the correct address has been configured. Unfortunately,
-        # SIOCGIFADDR_IN6 and friends don't work, getifaddrs is not easily available from python,
-        # and the underlying NET_RT_IFLIST sysctl call is far from trivial.
+        for addr in self.harness.interface.getAddrs(socket.AF_INET6):
+            if (compare(addr[0], self.harness.addr6.sa_local) and
+                compare(addr[1], self.harness.addr6.sa_mask) and
+                compare(addr[2], self.harness.addr6.sa_dst)):
+                return
+        self.fail()
 
 
 class TestTunInterface(TestInterface):
@@ -80,14 +100,6 @@ class TestTunInterface(TestInterface):
                           InterfaceHarness.IFF_SIMPLEX |
                           InterfaceHarness.IFF_MULTICAST,
                           self.harness.interface.flags)
-        
-    def test_Address(self):
-        self.harness.interface.addIfAddr(local = self.harness.addr.sa_local,
-                                         dst = self.harness.addr.sa_dst,
-                                         mask = self.harness.addr.sa_mask)
-        self.assertEquals(self.harness.addr.local, self.harness.interface.addr.addr)
-        self.assertEquals(self.harness.addr.dst, self.harness.interface.dstaddr.addr)
-        self.assertEquals(self.harness.addr.mask, self.harness.interface.mask.addr)
 
 
 class TestTapInterface(TestInterface):
@@ -102,10 +114,7 @@ class TestTapInterface(TestInterface):
                           InterfaceHarness.IFF_MULTICAST,
                           self.harness.interface.flags)
 
-    def test_Address(self):
-        self.harness.interface.addIfAddr(local = self.harness.addr.sa_local,
-                                         dst = self.harness.addr.sa_dst,
-                                         mask = self.harness.addr.sa_mask)
-        self.assertEquals(self.harness.addr.local, self.harness.interface.addr.addr)
-        self.assertEquals(self.harness.addr.dst, self.harness.interface.broadaddr.addr)
-        self.assertEquals(self.harness.addr.mask, self.harness.interface.mask.addr)
+    def test_SetLladdr(self):
+        addr = SockaddrDl(name = '', addr = '\x11\x22\x33\x44\x55\x66', type = 0)
+        self.harness.interface.lladdr = addr
+        self.assertEquals(addr.addr, self.harness.interface.lladdr.addr)

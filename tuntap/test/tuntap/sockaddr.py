@@ -28,26 +28,30 @@ class SockaddrDl(object):
     AF_LINK = 18
     STRUCT = struct.Struct('BBH4B')
 
-    def __init__(self, name, address, type, index = 0, af = AF_LINK):
+    def __init__(self, name, addr, type, index = 0, af = AF_LINK):
         self.af = af
         self.index = index
         self.type = type
         self.name = name
-        self.address = address
+        self.addr = addr
+
+    def __repr__(self):
+        return 'SockaddrDl<%d, %d, %d, %s, %s>' % (self.af, self.index, self.type,
+                                                   self.name, repr(self.addr))
 
     def __eq__(self, other):
         return (self.af == other.af and self.index == other.index and self.type == other.type and
-                self.name == other.name and self.address == other.address)
+                self.name == other.name and self.addr == other.addr)
 
     def encode(self):
         # It's important to make this size 12 at least to meet sizeof(struct sockaddr_dl), routing
         # setup chokes if it's not.
-        datalen = max(len(self.name) + len(self.address), 12) 
-        namelen = datalen - len(self.address)
+        datalen = max(len(self.name) + len(self.addr), 12) 
+        namelen = datalen - len(self.addr)
         data = SockaddrDl.STRUCT.pack(SockaddrDl.STRUCT.size + datalen,
                                       self.af, self.index, self.type,
-                                      namelen, len(self.address), 0) 
-        return data + self.name + '\x00' * (namelen - len(self.name)) + self.address
+                                      namelen, len(self.addr), 0) 
+        return data + self.name + '\x00' * (namelen - len(self.name)) + self.addr
 
     @classmethod
     def decode(self, data):
@@ -56,7 +60,7 @@ class SockaddrDl(object):
         paddr = pname + fields[4]
         pend = paddr + fields[5]
         return SockaddrDl(af = fields[1], index = fields[2], type = fields[3],
-                          name = data[pname:paddr], address = data[paddr:pend])
+                          name = data[pname:paddr], addr = data[paddr:pend])
 
 
 class SockaddrIn(object):
@@ -71,8 +75,11 @@ class SockaddrIn(object):
         self.port = port
         self.af = af
 
+    def __repr__(self):
+        return 'SockaddrIn<%d, %d, %s>' % (self.af, self.port, self.addr)
+
     def __eq__(self, other):
-        return self.addr == other.addr and self.port == other.port and self.af == other.af
+        return self.encode() == other.encode()
 
     def encode(self):
         return SockaddrIn.STRUCT.pack(16, self.af, self.port, socket.inet_aton(self.addr))
@@ -97,9 +104,12 @@ class SockaddrIn6(object):
         self.flowinfo = flowinfo
         self.scopeid = scopeid
 
+    def __repr__(self):
+        return 'SockaddrIn6<%d, %d, %s, %d, %d>' % (self.af, self.port, self.addr,
+                                                    self.flowinfo, self.scopeid)
+
     def __eq__(self, other):
-        return (self.addr == other.addr and self.port == other.port and self.af == other.af and
-                self.flowinfo == other.flowinfo and self.scopeid == other.scopeid)
+        return self.encode() == other.encode()
 
     def encode(self):
         return SockaddrIn6.STRUCT.pack(28, self.af, self.port, self.flowinfo,
