@@ -60,6 +60,8 @@ class BlockingPacketSource(object):
             pass
         except OSError as e:
             wsock.send(pickle.dumps((e.errno, '')))
+        except IOError as e:
+            wsock.send(pickle.dumps((e.errno, '')))
         finally:
             os.close(fd)
             wsock.close()
@@ -70,7 +72,12 @@ class BlockingPacketSource(object):
         if killpipe in r:
             return None
         if self._rsock in r:
-            return self._rsock.recv(MAX_PACKET_SIZE)
+            try:
+                return self._rsock.recv(MAX_PACKET_SIZE)
+            except IOError as e:
+                # If there's a read error on the subprocess, it'll close the socket.
+                if e.errno != errno.ECONNRESET:
+                    raise e
         return None
 
     def stop(self):
