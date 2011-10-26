@@ -20,6 +20,7 @@
 # LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import errno
 import socket
 
 from tuntap.char_dev_harness import TunCharDevHarness, TapCharDevHarness
@@ -46,9 +47,16 @@ class TunTapHarness(object):
         self.interface.addIfAddr6(local = self.addr6.sa_local,
                                   dst = self.addr6.sa_dst,
                                   mask = self.addr6.sa_mask)
-        tuntap.route.addNet(dst = self.addr6.sa_remote,
-                            netmask = self.addr6.sa_mask,
-                            interface = self.interface.lladdr)
+
+        # Lion automatically creates routes for IPv6 addresses, earlier versions don't.
+        try:
+            tuntap.route.addNet(dst = self.addr6.sa_remote,
+                                netmask = self.addr6.sa_mask,
+                                interface = self.interface.lladdr)
+        except IOError as e:
+            if e.errno != errno.EEXIST:
+                raise e
+
         self.interface.flags |= InterfaceHarness.IFF_UP
 
     def stop(self):
