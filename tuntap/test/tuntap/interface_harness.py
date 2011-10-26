@@ -22,6 +22,7 @@
 
 import ctypes
 import ctypes.util
+import errno
 import fcntl
 import socket
 import struct
@@ -129,7 +130,7 @@ class InterfaceHarness(object):
     SIOCGIFFLAGS = ioctl.IOC(ioctl.INOUT, 'i', 17, '16s16s')
 
     SIOCAIFADDR = ioctl.IOC(ioctl.OUT, 'i', 26, '16s16s16s16s')
-    SIOCAIFADDR_IN6 = ioctl.IOC(ioctl.OUT, 'i', 26, '16s28s28s28sIQQII')
+    SIOCAIFADDR_IN6 = ioctl.IOC(ioctl.OUT, 'i', 26, '16s28s28s28sIiiII')
     SIOCSIFLLADDR = ioctl.IOC(ioctl.OUT, 'i', 60, '16s16s')
 
     IFF_UP          = 0x1
@@ -263,7 +264,16 @@ class InterfaceHarness(object):
             dst: destination address.
             mask: the netmask.
         """
-        self._ioctl(socket.AF_INET6, InterfaceHarness.SIOCAIFADDR_IN6,
-                    '16s28s28s28sIQQII',
-                    (self.name, local.encode(), dst.encode(), mask.encode(),
-                     0, 0, 0, 0xffffffff, 0xffffffff))
+        # This sometimes fails on Tiger with ENOBUFS. Just retry...
+        ntries = 0
+        while True:
+            try:
+                self._ioctl(socket.AF_INET6, InterfaceHarness.SIOCAIFADDR_IN6,
+                            '16s28s28s28sIiiII',
+                            (self.name, local.encode(), dst.encode(), mask.encode(),
+                             0, 0, 0, 0xffffffff, 0xffffffff))
+                break
+            except IOError as e:
+                if e.errno != errno.ENOBUFS or ntries > 10:
+                    raise e
+                ntries += 1
