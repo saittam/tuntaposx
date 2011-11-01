@@ -1,4 +1,16 @@
 
+November 1, 2011:
+ o Make the netmask address family fix work without knowledge of the struct
+   ifaddr definition. This fixes a crash on Lion, where the layout of the
+   structure has been changed, but at the cost of the fix no longer working for
+   IPv6. I think this is OK though, since mDNSResponder has been fixed on
+   Leopard and beyond to no longer require the hack.
+ o Proper multicast address checking for tun; multicast should now work reliably
+   with IP and IPv6 on tun also.
+ o A quite comprehensive test suite has been added that allows for quick release
+   testing.
+ o PPC support has been dropped due to XCode 4 no longer supporting PPC arch.
+
 September 13, 2009:
  o Change linker options to produce 64 bit kext bundle for Snow Leopard.
  o Switch from kmem_alloc and friends to OSAlloc for memory allocation and
