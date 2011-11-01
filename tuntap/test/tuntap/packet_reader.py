@@ -99,24 +99,6 @@ class SelectPacketSource(object):
     def stop(self):
         pass
 
-class UDPSocketPacketSource(SelectPacketSource):
-    """
-    Creates a UDP socket and listens for packets from a given address.
-    """
-
-    def __init__(self, af, addr):
-        self._sock = socket.socket(af, socket.SOCK_DGRAM)
-        self._sock.bind(addr)
-        super(UDPSocketPacketSource, self).__init__(self._sock.fileno())
-
-    def stop(self):
-        super(UDPSocketPacketSource, self).stop()
-        self._sock.close()
-
-    @property
-    def addr(self):
-        return self._sock.getsockname()
-
 class Expectation(object):
     """
     Describes an expectation. Expectations are specified as dictionaries to match the packet

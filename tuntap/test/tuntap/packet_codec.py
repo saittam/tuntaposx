@@ -35,7 +35,7 @@ from tuntap.packet import (
     TunAFFrame,
     UDPPacket
 )
-from tuntap.packet_reader import PacketReader, UDPSocketPacketSource
+from tuntap.packet_reader import PacketReader, SelectPacketSource
 
 class PacketCodec(object):
     """
@@ -78,22 +78,21 @@ class PacketCodec(object):
 
     @property
     def UDPPort(self):
-        return self._listenPort
+        return self._recvSock.getsockname()[1]
 
     def start(self):
         self._harness = self._newHarness()
         self._harness.start()
         self._harness.up()
 
-        self._sock = socket.socket(self.addr.af, socket.SOCK_DGRAM)
+        self._sendSock = socket.socket(self.addr.af, socket.SOCK_DGRAM)
+        self._recvSock = socket.socket(self.addr.af, socket.SOCK_DGRAM)
+        self._recvSock.bind((self._listenAddress or self.addr.local, 0))
 
         self._reader = PacketReader(source = self._newPacketSource(self._harness.char_dev.fileno()),
                                     skip = True,
                                     decode = lambda packet : self._decodePacket(packet))
-
-        udpSource = UDPSocketPacketSource(self.addr.af, (self._listenAddress or self.addr.local, 0))
-        self._listenPort = udpSource.addr[1]
-        self._sockReader = PacketReader(source = udpSource)
+        self._sockReader = PacketReader(source = SelectPacketSource(self._recvSock.fileno()))
 
         self._reader.start()
         self._sockReader.start()
@@ -102,9 +101,11 @@ class PacketCodec(object):
         self._sockReader.stop()
         self._reader.stop()
         self._harness.stop()
+        self._sendSock.close()
+        self._recvSock.close()
 
     def sendUDP(self, payload, addr):
-        self._sock.sendto(payload, addr)
+        self._sendSock.sendto(payload, addr)
 
     def expectUDP(self, expectation):
         self._sockReader.expect(expectation)

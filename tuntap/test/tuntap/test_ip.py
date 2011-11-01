@@ -122,10 +122,10 @@ class TestMulticast(TestIO):
         mreq = struct.pack('4s4s',
                            socket.inet_pton(self._codec.af, TestMulticast.MULTICAST_GROUP),
                            socket.inet_pton(self._codec.af, self._codec.addr.local))
-        self._codec._sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-        self._codec._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
-        self._codec._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
-                                     socket.inet_pton(self._codec.af, self._codec.addr.local))
+        self._codec._recvSock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        self._codec._sendSock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 1)
+        self._codec._sendSock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF,
+                                         socket.inet_pton(self._codec.af, self._codec.addr.local))
 
     def test_Send(self):
         payload = 'knock, knock!'
@@ -167,10 +167,10 @@ class TestMulticast6(TestIO):
         mreq = struct.pack('16sI',
                            socket.inet_pton(self._codec.af, TestMulticast6.MULTICAST_GROUP),
                            self._codec._harness.interface.index)
-        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
-        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
-        self._codec._sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF,
-                                     self._codec._harness.interface.index)
+        self._codec._recvSock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
+        self._codec._sendSock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, 1)
+        self._codec._sendSock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF,
+                                         self._codec._harness.interface.index)
 
     def test_Send(self):
         payload = 'knock, knock!'
