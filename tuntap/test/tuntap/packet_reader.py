@@ -31,6 +31,20 @@ import threading
 
 MAX_PACKET_SIZE = 4096
 
+def handleEAgain(fn, *args, **kwargs):
+    """
+    Wraps a function call in loop, restarting on EAGAIN.
+    """
+    while True:
+        try:
+            return fn(*args, **kwargs)
+        except EnvironmentError as e:
+            if e.errno != errno.EAGAIN:
+              raise
+        except:
+            raise
+
+
 class BlockingPacketSource(object):
     """
     In order to be able to test blocking reads and not hang forever if the expected data never
@@ -52,16 +66,14 @@ class BlockingPacketSource(object):
         # gets killed or there is a read error.
         try:
             while True:
-                packet = os.read(fd, MAX_PACKET_SIZE)
-                wsock.send(pickle.dumps((0, packet)))
+                packet = handleEAgain(os.read, fd, MAX_PACKET_SIZE)
+                handleEAgain(wsock.send, pickle.dumps((0, packet)))
                 if len(packet) == 0:
                     break
         except KeyboardInterrupt:
             pass
-        except OSError as e:
-            wsock.send(pickle.dumps((e.errno, '')))
-        except IOError as e:
-            wsock.send(pickle.dumps((e.errno, '')))
+        except EnvironmentError as e:
+            handleEAgain(wsock.send, pickle.dumps((e.errno, '')))
         finally:
             os.close(fd)
             wsock.close()
@@ -73,8 +85,8 @@ class BlockingPacketSource(object):
             return None
         if self._rsock in r:
             try:
-                return self._rsock.recv(MAX_PACKET_SIZE)
-            except IOError as e:
+                return handleEAgain(self._rsock.recv, MAX_PACKET_SIZE)
+            except EnvironmentError as e:
                 # If there's a read error on the subprocess, it'll close the socket.
                 if e.errno != errno.ECONNRESET:
                     raise e
@@ -99,7 +111,7 @@ class SelectPacketSource(object):
         if killpipe in r:
             return None
         if self._fd in r:
-            packet = os.read(self._fd, MAX_PACKET_SIZE)
+            packet = handleEAgain(os.read, self._fd, MAX_PACKET_SIZE)
             return pickle.dumps((0, packet))
         return None
 
@@ -181,7 +193,7 @@ class PacketReader(object):
 
     def stop(self):
         self._stop.set()
-        os.write(self._shutdownPipe[1], 'stop')
+        handleEAgain(os.write, self._shutdownPipe[1], 'stop')
         self._readThread.join()
         self._source.stop()
         os.close(self._shutdownPipe[0])
@@ -193,12 +205,12 @@ class PacketReader(object):
         """
         try:
             while True:
-                packet = self._source.read(self._shutdownPipe[0])
+                packet = handleEAgain(self._source.read, self._shutdownPipe[0])
                 if not packet:
                     self._packets.put((0, ''))
                     break
                 self._packets.put(pickle.loads(packet))
-        except OSError as e:
+        except EnvironmentError as e:
             # The read() is racing against stop(), ignore these situations.
             if e.errno == EIO and self._stop.isSet():
                 self._packets.put((0, ''))
