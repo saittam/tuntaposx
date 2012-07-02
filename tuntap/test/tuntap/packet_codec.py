@@ -175,12 +175,13 @@ class TapPacketCodec(PacketCodec):
 
     def _framePacket(self, payload):
         return EthernetFrame(src = TapPacketCodec.ETHER_ADDR_REMOTE,
-                             dst = TapPacketCodec.ETHER_ADDR_ANY,
+                             dst = self._harness.interface.lladdr.addr,
                              type = TapPacketCodec.TYPE_MAP[self.addr.af],
                              payload = payload).encode()
 
     def _frameExpectation(self, expectation):
         return { 'type': TapPacketCodec.TYPE_MAP[self.addr.af],
+                 'src': self._harness.interface.lladdr.addr,
                  'payload': expectation }
 
     def _sendArpReply(self, packet):

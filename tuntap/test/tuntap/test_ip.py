@@ -26,6 +26,8 @@ import struct
 from unittest import TestCase
 
 from tuntap.packet import IPv4Packet, IPv6Packet, UDPPacket
+from tuntap.packet_codec import TapPacketCodec
+from tuntap.packet_reader import SelectPacketSource
 
 class TestIO(TestCase):
 
@@ -196,3 +198,21 @@ class TestMulticast6(TestIO):
         self._codec.sendPacket(packet.encode())
         self._codec.expectUDP(payload)
         self.assertTrue(self._codec.runUDP())
+
+
+class TestTapLladdr(TestIp):
+
+    def __init__(self, name):
+        super(TestTapLladdr, self).__init__(name,
+                                            lambda af, addr: TapPacketCodec(af, addr,
+                                                                            SelectPacketSource))
+
+    def setUp(self):
+        super(TestTapLladdr, self).setUp()
+
+        # Swap out the link-level address with a different address.
+        lladdr = self._codec._harness.interface.lladdr
+        mac_addr = list(lladdr.addr)
+        mac_addr[5] = chr(ord(mac_addr[5]) ^ 0xff)
+        lladdr.addr = ''.join(mac_addr)
+        self._codec._harness.interface.lladdr = lladdr
