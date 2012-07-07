@@ -40,6 +40,7 @@ extern "C" {
 #include <net/if_types.h>
 #include <net/if_arp.h>
 #include <net/if_dl.h>
+#include <net/if_media.h>
 #include <net/dlil.h>
 #include <net/ethernet.h>
 
@@ -50,6 +51,43 @@ extern "C" {
 #else
 #define dprintf(...)
 #endif
+
+// These declarations are missing in the Kernel.framework headers, put present in userspace :-/
+#pragma pack(4)
+struct ifmediareq {
+	char	ifm_name[IFNAMSIZ];	/* if name, e.g. "en0" */
+	int	ifm_current;		/* current media options */
+	int	ifm_mask;		/* don't care mask */
+	int	ifm_status;		/* media status */
+	int	ifm_active;		/* active options */
+	int	ifm_count;		/* # entries in ifm_ulist array */
+	int	*ifm_ulist;		/* media words */
+};
+
+struct ifmediareq64 {
+	char	ifm_name[IFNAMSIZ];	/* if name, e.g. "en0" */
+	int	ifm_current;		/* current media options */
+	int	ifm_mask;		/* don't care mask */
+	int	ifm_status;		/* media status */
+	int	ifm_active;		/* active options */
+	int	ifm_count;		/* # entries in ifm_ulist array */
+	user64_addr_t ifmu_ulist __attribute__((aligned(8)));
+};
+
+struct ifmediareq32 {
+	char	ifm_name[IFNAMSIZ];	/* if name, e.g. "en0" */
+	int	ifm_current;		/* current media options */
+	int	ifm_mask;		/* don't care mask */
+	int	ifm_status;		/* media status */
+	int	ifm_active;		/* active options */
+	int	ifm_count;		/* # entries in ifm_ulist array */
+	user32_addr_t ifmu_ulist;	/* 32-bit pointer */
+};
+#pragma pack()
+
+#define	SIOCGIFMEDIA32	_IOWR('i', 56, struct ifmediareq32) /* get net media */
+#define	SIOCGIFMEDIA64	_IOWR('i', 56, struct ifmediareq64) /* get net media (64-bit) */
+
 
 static unsigned char ETHER_BROADCAST_ADDR[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
@@ -174,6 +212,30 @@ tap_interface::if_ioctl(u_int32_t cmd, void *arg)
 					dprintf("tap: failed to set lladdr on %s%d: %d\n",
 							family_name, unit, err);
 
+				return 0;
+			}
+
+		case SIOCGIFMEDIA32:
+		case SIOCGIFMEDIA64:
+			{
+				struct ifmediareq *ifmr = (struct ifmediareq*) arg;
+				user_addr_t list = USER_ADDR_NULL;
+
+				ifmr->ifm_current = IFM_ETHER;
+				ifmr->ifm_mask = 0;
+				ifmr->ifm_status = IFM_AVALID | IFM_ACTIVE;
+				ifmr->ifm_active = IFM_ETHER;
+				ifmr->ifm_count = 1;
+
+				if (cmd == SIOCGIFMEDIA64)
+					list = ((struct ifmediareq64*) ifmr)->ifmu_ulist;
+				else
+					list = CAST_USER_ADDR_T(
+						((struct ifmediareq32*) ifmr)->ifmu_ulist);
+				
+				if (list != USER_ADDR_NULL)
+					return copyout(&ifmr->ifm_current, list, sizeof(int));
+				
 				return 0;
 			}
 
