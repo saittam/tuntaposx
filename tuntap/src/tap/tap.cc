@@ -36,6 +36,7 @@ extern "C" {
 #include <sys/param.h>
 #include <sys/sockio.h>
 #include <sys/random.h>
+#include <sys/kern_event.h>
 
 #include <net/if_types.h>
 #include <net/if_arp.h>
@@ -206,11 +207,18 @@ tap_interface::if_ioctl(u_int32_t cmd, void *arg)
 					return EINVAL;
 
 				/* ok, copy */
-
 				errno_t err = ifnet_set_lladdr(ifp, ea->sa_data, ETHER_ADDR_LEN);
-				if (err)
+				if (err) {
 					dprintf("tap: failed to set lladdr on %s%d: %d\n",
 							family_name, unit, err);
+					return err;
+				}
+
+				/* Generate a LINK_ON event. This necessary for configd to re-read
+				 * the interface data and refresh the MAC address. Not doing so
+				 * would result in the DHCP client using a stale MAC address...
+				 */
+				generate_link_event(KEV_DL_LINK_ON);
 
 				return 0;
 			}
@@ -410,6 +418,29 @@ tap_interface::add_one_proto(protocol_family_t proto, const struct ifnet_demux_d
 	attached_protos[free].proto = proto;
 
 	return 0;
+}
+
+/* This code is shamelessly stolen from if_bond.c */
+void
+tap_interface::generate_link_event(u_int32_t code)
+{
+	struct {
+		struct kern_event_msg header;
+		u_int32_t unit;
+		char if_name[IFNAMSIZ];
+	} event;
+
+	bzero(&event, sizeof(event));
+	event.header.total_size = sizeof(event);
+	event.header.vendor_code = KEV_VENDOR_APPLE;
+	event.header.kev_class = KEV_NETWORK_CLASS;
+	event.header.kev_subclass = KEV_DL_SUBCLASS;
+	event.header.event_code = code;
+	event.header.event_data[0] = family;
+	event.unit = (u_int32_t) unit;
+	strncpy(event.if_name, ifnet_name(ifp), IFNAMSIZ);
+
+	ifnet_event(ifp, &event.header);
 }
 
 /* tap_manager members */

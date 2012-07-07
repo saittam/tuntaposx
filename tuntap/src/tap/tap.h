@@ -90,6 +90,9 @@ class tap_interface : public tuntap_interface {
 		/* if_add_proto helper */
 		errno_t add_one_proto(protocol_family_t proto, const struct ifnet_demux_desc &dd);
 
+		/* generates a kernel event */
+		void generate_link_event(u_int32_t code);
+
 		friend class tap_manager;
 };
 
