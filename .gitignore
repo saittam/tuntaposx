@@ -1,4 +1,5 @@
 .*
+*.pyc
 tuntap/src/*.o
 tuntap/src/*/*.o
 tuntap/src/tap/tap
