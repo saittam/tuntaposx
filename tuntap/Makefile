@@ -6,29 +6,37 @@ BASE=
 
 all: tap.kext tun.kext
 
-pkg: all
-	/Developer/Applications/Utilities/PackageMaker.app/Contents/MacOS/PackageMaker \
-		-d pkg/tuntap.pmdoc -o tuntap_$(TUNTAP_VERSION).pkg -v
+pkgbuild/%.pkg: %.kext
+	mkdir -p pkgbuild/$*_root/Library/Extensions
+	cp -pR $*.kext pkgbuild/$*_root/Library/Extensions
+	mkdir -p pkgbuild/$*_root/Library/LaunchDaemons
+	cp pkg/launchd/net.sf.tuntaposx.$*.plist pkgbuild/$*_root/Library/LaunchDaemons
+	pkgbuild --root pkgbuild/$*_root \
+		--component-plist pkg/components/$*.plist \
+		--scripts pkg/scripts/$* pkgbuild/$*.pkg
+
+tuntap_$(TUNTAP_VERSION).pkg: pkgbuild/tap.pkg pkgbuild/tun.pkg
+	productbuild --distribution pkg/distribution.xml --package-path pkgbuild \
+		--resources pkg/res.dummy tuntap_$(TUNTAP_VERSION).pkg
+	pkgutil --expand tuntap_$(TUNTAP_VERSION).pkg pkgbuild/tuntap_pkg.d
+	cp -pR pkg/res/ pkgbuild/tuntap_pkg.d/Resources
+	pkgutil --flatten pkgbuild/tuntap_pkg.d tuntap_$(TUNTAP_VERSION).pkg
+
+pkg: tuntap_$(TUNTAP_VERSION).pkg
 	tar czf tuntap_$(TUNTAP_VERSION).tar.gz \
 		README.installer README tuntap_$(TUNTAP_VERSION).pkg 
 
 # Install targets
 # They are provided for the gentoo ebuild, but should work just fine for other people as well.
-install_kext: tap.kext tun.kext
-	mkdir -p ${BASE}/Library/Extensions
-	cp -pR tap.kext ${BASE}/Library/Extensions/
-	chown -R root:wheel ${BASE}/Library/Extensions/tap.kext
-	cp -pR tun.kext ${BASE}/Library/Extensions/ 
-	chown -R root:wheel ${BASE}/Library/Extensions/tun.kext
+install_%_kext: %.kext
+	mkdir -p $(BASE)/Library/Extensions
+	cp -pR $*.kext $(BASE)/Library/Extensions/
+	chown -R root:wheel $(BASE)/Library/Extensions/$*.kext
+	mkdir -p $(BASE)/Library/LaunchDaemons
+	cp pkg/launchd/net.sf.tuntaposx.$*.plist $(BASE)/Library/LaunchDaemons
+	chown -R root:wheel $(BASE)/Library/LaunchDaemons/net.sf.tuntaposx.$*.plist
 
-install_scripts:
-	mkdir -p ${BASE}/Library/StartupItems
-	cp -pR startup_item/tap ${BASE}/Library/StartupItems/
-	chown -R root:wheel ${BASE}/Library/StartupItems/tap
-	cp -pR startup_item/tun ${BASE}/Library/StartupItems/ 
-	chown -R root:wheel ${BASE}/Library/StartupItems/tun
-
-install: install_kext install_scripts
+install: install_tap_kext install_tun_kext
 
 tarball: clean
 	touch tuntap_$(TUNTAP_VERSION)_src.tar.gz
@@ -43,15 +51,13 @@ tarball: clean
 clean:
 	cd src/tap && make -f Makefile clean
 	cd src/tun && make -f Makefile clean
+	-rm -rf pkgbuild
 	-rm -rf tuntap_$(TUNTAP_VERSION).pkg
 	-rm -f tuntap_$(TUNTAP_VERSION).tar.gz
 	-rm -f tuntap_$(TUNTAP_VERSION)_src.tar.gz
 
-tap.kext:
-	cd src/tap && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
-
-tun.kext:
-	cd src/tun && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
+%.kext:
+	cd src/$* && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
 
 test:
 	# configd messes with interface flags, issuing SIOCSIFFLAGS ioctls upon receiving kernel
