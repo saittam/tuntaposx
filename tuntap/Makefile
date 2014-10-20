@@ -6,6 +6,18 @@ BASE=
 
 all: tap.kext tun.kext
 
+keysetup:
+	-security delete-keychain net.sf.tuntaposx.tmp
+	security create-keychain -p $$(head -c 32 /dev/urandom | hexdump -e '"%02x"') \
+		net.sf.tuntaposx.tmp
+	security set-keychain-settings -lut 60 net.sf.tuntaposx.tmp
+	security import identity.p12 -k net.sf.tuntaposx.tmp -f pkcs12 \
+		-P $$(read -sp 'identity passphrase: ' pw && echo "$$pw") -A
+	security find-identity -v net.sf.tuntaposx.tmp | \
+		awk -F \" '$$2 ~ /^Developer ID Application:/ { print $$2 }' > .signing_identity
+	security find-identity -v net.sf.tuntaposx.tmp | \
+		awk -F \" '$$2 ~ /^Developer ID Installer:/ { print $$2 }' > .installer_identity
+
 pkgbuild/%.pkg: %.kext
 	mkdir -p pkgbuild/$*_root/Library/Extensions
 	cp -pR $*.kext pkgbuild/$*_root/Library/Extensions
@@ -17,10 +29,16 @@ pkgbuild/%.pkg: %.kext
 
 tuntap_$(TUNTAP_VERSION).pkg: pkgbuild/tap.pkg pkgbuild/tun.pkg
 	productbuild --distribution pkg/distribution.xml --package-path pkgbuild \
-		--resources pkg/res.dummy tuntap_$(TUNTAP_VERSION).pkg
+		--resources pkg/res.dummy \
+		tuntap_$(TUNTAP_VERSION).pkg ; \
 	pkgutil --expand tuntap_$(TUNTAP_VERSION).pkg pkgbuild/tuntap_pkg.d
 	cp -pR pkg/res/ pkgbuild/tuntap_pkg.d/Resources
 	pkgutil --flatten pkgbuild/tuntap_pkg.d tuntap_$(TUNTAP_VERSION).pkg
+	if test -s ".installer_identity"; then \
+		productsign --sign "$$(cat .installer_identity)" --keychain net.sf.tuntaposx.tmp \
+			tuntap_$(TUNTAP_VERSION).pkg tuntap_$(TUNTAP_VERSION).pkg.signed ; \
+		mv tuntap_$(TUNTAP_VERSION).pkg.signed tuntap_$(TUNTAP_VERSION).pkg ; \
+	fi
 
 pkg: tuntap_$(TUNTAP_VERSION).pkg
 	tar czf tuntap_$(TUNTAP_VERSION).tar.gz \
@@ -42,6 +60,7 @@ tarball: clean
 	touch tuntap_$(TUNTAP_VERSION)_src.tar.gz
 	tar czf tuntap_$(TUNTAP_VERSION)_src.tar.gz \
 		-C .. \
+		--exclude "tuntap/identity.p12" \
 		--exclude "tuntap/tuntap_$(TUNTAP_VERSION)_src.tar.gz" \
 		--exclude "tuntap/tuntap_$(TUNTAP_VERSION).tar.gz" \
 		--exclude "tuntap/tuntap_$(TUNTAP_VERSION).pkg" \
@@ -58,6 +77,10 @@ clean:
 
 %.kext:
 	cd src/$* && make TUNTAP_VERSION=$(TUNTAP_VERSION) -f Makefile all
+	if test -s ".signing_identity"; then \
+		codesign -fv --keychain net.sf.tuntaposx.tmp -s "$$(cat .signing_identity)" \
+			$*.kext ; \
+	fi
 
 test:
 	# configd messes with interface flags, issuing SIOCSIFFLAGS ioctls upon receiving kernel
