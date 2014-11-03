@@ -1,4 +1,18 @@
 
+November 4, 2014:
+ o Generate a LINK_ON event on MAC address changes. This works around a problem
+   with the DHCP client implementation using a stale MAC address after updating
+   the network interface's address.
+ o Update compilation to only produce 64 bit binaries, which is appropriate for
+   Mavericks and onwards.
+ o Modernize package generation to use pkgbuild and productbuild.
+ o Replace the startup items with launchd jobs.
+ o Code signatures for the kernel extensions as well as the installer, the
+   signed extensions now work on Mavericks and Yosemite.
+ o Add extra synchronization in tap.kext to avoid a kernel crash triggered by
+   quickly re-attaching an interface.
+ o Fix MTU enforcement calculation when writing to the character device.
+
 November 1, 2011:
  o Make the netmask address family fix work without knowledge of the struct
    ifaddr definition. This fixes a crash on Lion, where the layout of the
