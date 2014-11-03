@@ -384,10 +384,10 @@ tuntap_interface::unregister_interface()
 		dprintf("interface detaching\n");
 
 		/* Wait until the interface has completely been detached. */
-		detach_lock.lock();
+		thread_sync_lock.lock();
 		while (!interface_detached)
-			detach_lock.sleep(&interface_detached);
-		detach_lock.unlock();
+			thread_sync_lock.sleep(&interface_detached);
+		thread_sync_lock.unlock();
 
 		dprintf("interface detached\n");
 
@@ -952,10 +952,10 @@ tuntap_interface::if_detached()
 	dprintf("tuntap: if_detached\n");
 
 	/* wake unregister_interface() */
-	detach_lock.lock();
+	thread_sync_lock.lock();
 	interface_detached = true;
-	detach_lock.wakeup(&interface_detached);
-	detach_lock.unlock();
+	thread_sync_lock.wakeup(&interface_detached);
+	thread_sync_lock.unlock();
 
 	dprintf("if_detached done\n");
 }
