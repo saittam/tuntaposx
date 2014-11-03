@@ -133,6 +133,8 @@ class InterfaceHarness(object):
     SIOCAIFADDR_IN6 = ioctl.IOC(ioctl.OUT, 'i', 26, '16s28s28s28sIiiII')
     SIOCSIFLLADDR = ioctl.IOC(ioctl.OUT, 'i', 60, '16s16s')
 
+    SIOCGIFMTU = ioctl.IOC(ioctl.INOUT, 'i', 51, '16s16s')
+
     IFF_UP          = 0x1
     IFF_BROADCAST   = 0x2
     IFF_DEBUG       = 0x4
@@ -201,6 +203,17 @@ class InterfaceHarness(object):
         """
         self._ioctl(socket.AF_INET, InterfaceHarness.SIOCSIFFLAGS,
                     '16sH', (self.name, flags))
+
+    @property
+    def mtu(self):
+        """
+        Retrieves the interface MTU.
+
+        Returns:
+            The interface MTU.
+        """
+        return self._ioctl(socket.AF_INET, InterfaceHarness.SIOCGIFMTU,
+                           '16si', (self.name, 0))[1]
 
     @property
     def name(self):

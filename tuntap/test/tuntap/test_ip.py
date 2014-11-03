@@ -78,6 +78,22 @@ class TestIp(TestIO):
         self._codec.expectUDP(payload)
         self.assertTrue(self._codec.runUDP())
 
+    def test_RecvMTUSize(self):
+        # Send a payload that's just within the MTU limit.
+        payload = '\xff' * (self._codec._harness.interface.mtu -
+                            IPv4Packet().headerLen - UDPPacket().headerLen)
+        srcport = 23456
+        packet = IPv4Packet(proto = IPv4Packet.PROTO_UDP,
+                            src = socket.inet_pton(self._codec.af, self._codec.addr.remote),
+                            dst = socket.inet_pton(self._codec.af, self._codec.addr.local),
+                            payload = UDPPacket(src = srcport,
+                                                dst = self._codec.UDPPort,
+                                                payload = payload))
+        assert len(packet.encode()) == self._codec._harness.interface.mtu
+        self._codec.sendPacket(packet.encode())
+        self._codec.expectUDP(payload)
+        self.assertTrue(self._codec.runUDP())
+
 
 class TestIp6(TestIO):
 

@@ -67,13 +67,14 @@ class BlockingPacketSource(object):
         try:
             while True:
                 packet = handleEAgain(os.read, fd, MAX_PACKET_SIZE)
-                handleEAgain(wsock.send, pickle.dumps((0, packet)))
+                handleEAgain(wsock.send, pickle.dumps((0, packet), pickle.HIGHEST_PROTOCOL))
                 if len(packet) == 0:
                     break
         except KeyboardInterrupt:
             pass
         except EnvironmentError as e:
-            handleEAgain(wsock.send, pickle.dumps((e.errno, '')))
+            print "Packet source recevied error: %d" % e.errno
+            handleEAgain(wsock.send, pickle.dumps((e.errno, ''), pickle.HIGHEST_PROTOCOL))
         finally:
             os.close(fd)
             wsock.close()
