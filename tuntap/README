@@ -1,4 +1,3 @@
-
 tun/tap driver for Mac OS X
 ===========================
 
@@ -8,9 +7,9 @@ configured at compile time, it is currently set to 16. That should be enough in
 most cases.
 
 The driver ships as two kernel extensions, one for tap and one for tun. They are
-located in /Library/Extensions and can also be loaded and unloaded by hand. If
-you install the startup item, the system will load them automatically at
-startup (tun and tap startup items get installed in /Library/StartupItems).
+located in /Library/Extensions and can also be loaded and unloaded by hand. The
+distribution also contains launchd jobs that will automatically load the kernel
+extensions at system startup.
 
 Operation & Programming notes
 =============================
@@ -41,15 +40,15 @@ mode while packets are in flight on the device.
 
 The character devices are always visible in the filesystem as /dev/tunX and
 /dev/tapX. The number of available character devices is a compile time constant
-and is currently fixed to 16. Each character devices is associated with a
-network interface of the same name. The network interfaces are only created when
+and is currently fixed to 16. Each character device is associated with a
+network interface of the same name. The network interface is only created when
 the corresponding character device is opened by a program and will be removed
 when the character device is closed.
 
 The character devices currently provide a pretty minimal interface. Whole
 packets are read and written using a singe read/write call. File descriptors
 opened on the devices can also be select()ed and support O_NONBLOCK.
-Asynchronous i/o and some ioctls are currently unimplemented, but implementing
+Asynchronous I/O and some ioctls are currently unimplemented, but implementing
 them shouldn't be very hard. Do it yourself or contact me if you can't live
 without.
 
@@ -73,13 +72,12 @@ Uninstalling
 ============
 
 The installer packages for OS X currently don't have support for uninstall as
-the installer doesn't provide it. Remove the following directories if you want
-to completely remove the files installed:
+the installer doesn't provide it. Remove the following files and directories if
+you want to completely remove all the files installed:
 
 /Library/Extensions/tap.kext
 /Library/Extensions/tun.kext
-/Library/StartupItems/tap
-/Library/StartupItems/tun
+/Library/LaunchDaemons/net.sf.tuntaposx.tap.plist
+/Library/LaunchDaemons/net.sf.tuntaposx.tun.plist
 
 Unload the the kernel extensions or reboot and you're done.
-

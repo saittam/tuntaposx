@@ -1,4 +1,3 @@
-
 Building
 ========
 
@@ -8,30 +7,73 @@ Tools installed. Then from the top of the tun/tap source tree issue
 	# make
 
 This will build the driver kexts and place them as tap.kext and tun.kext in the
-top tun/tap directory. You can install these two kexts directly in
-/Library/Extensions. As root, you can simply say
+top tun/tap directory.
 
-	# make install_kext
 
-Otherwise OS X will refuse to load the extensions. After that, they can be
-loaded using kextload:
+Installing
+==========
+
+Note that OS X will refuse to load kernel extensions if they are not owned by
+root. So you can install the two kexts directly in /Library/Extensions:
+
+	# sudo make install
+
+Note that this also installs launchd jobs to automatically load the kexts at
+boot. No need to reboot now though, the kexts can be loaded using kextload:
 
 	# kextload /Library/Extensions/tap.kext/
 	kextload: /Library/Extensions/tap.kext/ loaded successfully
 	# kextload /Library/Extensions/tun.kext/
 	kextload: /Library/Extensions/tun.kext/ loaded successfully
 
-If you want to have the extensions loaded at boot time, use the startup items
-provided in the directory startup_items. This can be done using the Makefile (as
-root):
-
-	# make install_scripts
+Note that this will only work if your system allows running kernel extensions
+that lack a digital signature. See below for more.
 
 I have also included the files used to build the installer packages in the
 directory pkg. They can be made by
 
 	# make pkg
 
-This is all I have to say at the moment, feel free to mail me any bug reports,
-problems and suggestions you have at <mattias.nissler@gmx.de>.
 
+Code signing
+============
+
+Beginning with 10.10, Apple requires all kernel extensions to carry a valid
+digital signature from a certified developer. This means your locally built
+kernel extensions will only work if (1) you disable kext signature checks for
+your system or (2) you acquire a developer certificate with kernel extension
+signing powers and sign your extensions.
+
+#1 has obvious security implications and is not recommended, but may be
+acceptable temporarily for testing changes. If you do have a suitable
+certificate, here is how you can get the build scripts generate signatures:
+
+1) Export your private signing key and corresponding certificate to a
+   PKCS#12 file that replaces the identity.p12 file in the tuntap
+   source directory.
+
+2) Run
+
+	# make keysetup
+
+   This will prompt you for your passphrase, decrypt the identity.p12
+   file and import its contents into a temporary keychain. The keychain
+   is configured to use a randomly-generated password and to lock after
+   60 seconds. This means your keys are now available without further
+   password prompts for the next 60 seconds.
+
+3) (Re-)Build the kernel extensions as usual:
+
+	# make clean all
+
+   If this fails saying "User interaction is not allowed.", the timeout to lock
+   the temporary keychain created in step #2 has fired already. Re-run step #2
+   and retry. If you want to switch back to building unsigned kernel
+   extensions, just remove the .signing_identity and .installer_identity files.
+
+4) Note that the installer package created by the pkg target will also be
+   signed if a suitable signing key is available in the identity.p12 file.
+
+
+This is all I have to say at the moment, feel free send mail for any bug
+reports, problems and suggestions you have at <mattias.nissler@gmx.de>.
