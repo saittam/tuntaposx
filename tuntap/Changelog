@@ -1,4 +1,7 @@
 
+January 18, 2015:
+ o Update documentation to reflect removal of startup items.
+
 November 4, 2014:
  o Generate a LINK_ON event on MAC address changes. This works around a problem
    with the DHCP client implementation using a stale MAC address after updating
