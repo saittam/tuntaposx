@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- vim: set ts=2 sw=2 tw=100 fenc=utf8 spell spelllang=en_us : -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<title>TunTap - Download</title>
+	<style type="text/css" media="all">@import "style.css";</style>
+</head>
+<body>
+	<div id="container">
+		<div id="title"></div>
+		<div id="subtitle"></div>
+		<div id="plug"></div>
+		<div id="top">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="header">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="main">
+			<div class="left"></div>
+			<div class="right"></div>
+			<div class="center">
+				<div class="content">
+					<div class="navigation">
+						<a href="index.xhtml">Home</a>
+						<a href="faq.xhtml">FAQ</a>
+						<a href="download.xhtml">Download</a>
+						<a href="development.xhtml">Development</a>
+					</div>
+					<h1>Download</h1>
+					<p>
+						The current TunTap version is provided as an installation package that can be installed
+						on Mac OS X 10.9 (Mavericks) and 10.10 (Yosemite). Click to download the current
+						release: <a
+						href="http://downloads.sourceforge.net/tuntaposx/tuntap_20150118.tar.gz">tuntap_20150118</a>.
+					</p>
+
+					<h2>Latest changes</h2>
+					<h3>January 18, 2015</h3>
+					<ul>
+						<li>Update documentation to reflect removal of startup items.</li>
+					</ul>
+
+					<h3>November 4, 2014</h3>
+					<ul>
+						<li>Generate a LINK_ON event on MAC address changes. This works around a problem with
+						the DHCP client implementation using a stale MAC address after updating the network
+						interface's address.</li>
+						<li>Update compilation to only produce 64 bit binaries, which is appropriate for
+						Mavericks and onwards.</li>
+						<li>Modernize package generation to use pkgbuild and productbuild.</li>
+						<li>Replace the startup items with launchd jobs.</li>
+						<li>Code signatures for the kernel extensions as well as the installer, the signed
+						extensions now work on Mavericks and Yosemite.</li>
+						<li>Add extra synchronization in tap.kext to avoid a kernel crash triggered by quickly
+						re-attaching an interface.</li>
+						<li>Fix MTU enforcement calculation when writing to the character device.</li>
+					</ul>
+
+					<h3>November 1, 2011:</h3>
+					<ul>
+						<li>Make the netmask address family fix work without knowledge of the struct ifaddr
+						definition. This fixes a crash on Lion, where the layout of the structure has been
+						changed, but at the cost of the fix no longer working for IPv6. I think this is OK
+						though, since mDNSResponder has been fixed on Leopard and beyond to no longer require
+						the hack.</li>
+						<li>Proper multicast address checking for tun; multicast should now work reliably with
+						IP and IPv6 on tun also.</li>
+						<li>A quite comprehensive test suite has been added that allows for quick release
+						testing.</li>
+						<li>PPC support has been dropped due to XCode 4 no longer supporting PPC arch.</li>
+					</ul>
+
+					<h3>September 13, 2009:</h3>
+					<ul>
+						<li>Change linker options to produce 64 bit kext bundle for Snow Leopard.</li>
+						<li>Switch from kmem_alloc and friends to OSAlloc for memory allocation and avoid the
+						delay() call. Respective symbols are not available on 64 bit kernels anymore.</li>
+					</ul>
+
+					<h3>September 5, 2009:</h3>
+					<ul>
+						<li>Initial Snow Leopard port. Thanks to various people contributing patches in the
+						bugtracker. The new official version can only be compiled on Snow Leopard but has been
+						tested to work on all Tiger, Leopard and Snow Leopard</li>
+						<li>Clean up unused locking code and switch to rwlocks even for simple mutexes, which
+						avoids a symbol incompatibility for Tiger and Leopard.</li>
+						<li>Clean up compilation flags in the Makefiles.</li>
+					</ul>
+
+					<h3>July 4, 2008:</h3>
+					<ul>
+						<li>Adapt the former Leopard package to also be installable on Tiger systems. This
+						obsoletes the Tiger version, both Leopard and Tiger are now supported by a single
+						package.</li>
+					</ul>
+
+					<h3>June 7, 2008:</h3>
+					<ul>
+						<li>Protect the selwakeup() call by the lock. This fixes incorrect select() behaviour,
+						thanks to Roland Wendelin for reporting this.</li>
+						<li>Fix tuntap_mbuf_queue::size initialization</li>
+						<li>Use a proper wait condition for synchronization when detaching the network
+						interface. The old code would crash if the if_detached() handler was called from a
+						different thread than unregister_interface().</li>
+					</ul>
+
+					<h3>January 21, 2008:</h3>
+					<ul>
+						<li>Work around an issue in the Darwin kernel. When unregistering an interface,
+						addresses are not properly removed from the interface. This leads to crashes and other
+						problems when reusing the interface. Introduce an ugly hack that tries to remove all
+						interface addresses when shutting the interface down.</li>
+						<li>Fix a small mbuf leak that could occur when the output queue was full. Thanks to
+						Oleg Dolgov for reporting this.</li>
+					</ul>
+
+					<h3>December 21, 2007:</h3>
+					<ul>
+						<li>Fix paths in the startup item postflight scripts</li>
+						<li>Check if_ioctl arguments more defensively after a report of a panic after receiving
+						a NULL arg.</li>
+					</ul>
+
+					<h3>November 14, 2007:</h3>
+					<ul>
+						<li>I have done a complete rework of the installer package generation. The package is
+						now edited in PackageMaker. The distribution package can still be built from the
+						commandline though.</li>
+						<li>Fix incorrect permission &amp; ownership of the installed files.</li>
+					</ul>
+
+					<h3>Oktober 11, 2007:</h3>
+					<ul>
+						<li>Fix the permissions of the postflight scripts. Installer packages should work
+						again.</li>
+						<li>Drop the kmod and kmodc++ in the linker command, they seem to be unneeded with
+						Leopard.</li>
+					</ul>
+
+					<p>
+						Please consult the <a
+						href="https://sourceforge.net/p/tuntaposx/code/ci/master/tree/tuntap/Changelog">Changelog</a>
+						file in the source tree for the full history of changes.
+					</p>
+
+					<h1>Legacy versions</h1>
+					<p>
+						The following legacy packages can be used with previous Mac OS X versions. These reflect old versions current at the time of the respective Mac OS X versions. Since the base functionality provided by TunTap hasn't changed significantly over the years, these are mostly equivalent feature-wise.
+					</p>
+
+					<ul>
+						<li>Version <a
+						href="https://sourceforge.net/projects/tuntaposx/files/tuntap%20panther/20050515/">20050515</a> for Mac
+						OS X 10.3 (Panther)</li>
+						<li>Version <a
+						href="https://sourceforge.net/projects/tuntaposx/files/tuntap/20111101/">20111101</a> for Mac
+						OS X 10.4 (Tiger), 10.5 (Leopard), 10.6 (Snow Leopard), 10.7 (Lion), 10.8 (Mountain Lion)</li>
+						<li>The <a
+						href="http://sourceforge.net/project/showfiles.php?group_id=235725">download page</a> has a complete archive of previous releases.</li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div id="bottom">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="fineprint">
+			<span id="sourceforge-logo">
+				<a href="http://sourceforge.net">
+					<img src="http://sflogo.sourceforge.net/sflogo.php?group_id=235725&amp;type=3" width="125"
+					height="37" alt="SourceForge.net Logo"/>
+				</a>
+			</span>
+			<p>
+				Valid <a href="http://validator.w3.org/check?uri=referer">XHTML</a> and <a
+				href="http://jigsaw.w3.org/css-validator/check/referer">CSS</a><br/>
+				This project is hosted by <a href="http://sourceforge.net">sourceforge.net</a><br/>
+				Copyright &copy; 2008, 2009 Mattias Nissler &lt;mattias.nissler@gmx.de&gt;
+			</p>
+		</div>
+	</div>
+</body>
+</html>

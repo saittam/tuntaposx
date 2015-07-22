@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- vim: set ts=2 sw=2 tw=100 fenc=utf8 spell spelllang=en_us : -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<title>TunTap - Home</title>
+	<style type="text/css" media="all">@import "style.css";</style>
+</head>
+<body>
+	<div id="container">
+		<div id="title"></div>
+		<div id="subtitle"></div>
+		<div id="plug"></div>
+		<div id="top">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="header">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="main">
+			<div class="left"></div>
+			<div class="right"></div>
+			<div class="center">
+				<div class="content">
+					<div class="navigation">
+						<a href="index.xhtml">Home</a>
+						<a href="faq.xhtml">FAQ</a>
+						<a href="download.xhtml">Download</a>
+						<a href="development.xhtml">Development</a>
+					</div>
+					<h1>Overview</h1>
+					<h3>What is it?</h3>
+					<p>
+						The TunTap project provides kernel extensions for Mac OS X that allow to create virtual
+						network interfaces. From the operating system kernel's point of view, these interfaces
+						behave similar to physical network adapters such as an Ethernet network interface.
+						However, the virtual interface does not send the packets into a wire, but makes them
+						available to programs running in the system.
+					</p>
+					<p>
+						The software comes as a pair of kernel extensions that create virtual network interfaces
+						on the IP and Ethernet level, respectively. These kind of network interfaces are
+						commonly referred to as tun and tap devices on Unix-like platforms. This way of
+						interfacing with the operating system's network stack is available on many platforms
+						(cf. the <a href="http://en.wikipedia.org/wiki/TUN/TAP">TUN/TAP</a> wikipedia article).
+					</p>
+					<h3>Who needs it?</h3>
+					<p>
+						By design, virtual network interfaces can be very flexibly used by any program that
+						wants to receive packets from and inject them into the network stack. Generally, tun and
+						tap devices are most commonly used in two distinct application scenarios: The first one
+						is VPN software (such as <a href="http://openvpn.net">OpenVPN</a>). In this scenario,
+						the kernel sends its network packets to the tun or tap devices. The VPN software will
+						then encrypt and forward them to the other side of the VPN tunnel where they get
+						decrypted and delivered to their destination. The second area in which tun and tap
+						devices are popular are system virtualization/emulation packages. In this case, the
+						virtualized operating system instance talks to a fake network device (commonly a virtual
+						Ethernet adapter). The virtualization software then creates a tap device and
+						interconnects the two such that the host system can talk to the guest and vice versa.
+					</p>
+					<h3>How does it work?</h3>
+					<p>
+						The TunTap package is comprised of a pair of kernel extensions, one providing tun and
+						one providing tap interfaces. They create a set of character devices
+						<code>/dev/tunX</code> and <code>/dev/tapX</code>, respectively, where <code>X</code>
+						is a number between zero and the maximum number of supported virtual interfaces. Once an
+						application opens the character device, say <code>/dev/tap0</code>, a virtual network
+						interface is created in the system, which will be named accordingly, i.e.
+						<code>tap0</code>. The network interface can be assigned addresses just like any other
+						network interfaces. After configuring the interface, packets that the kernel sends
+						through this interface (as determined by the routing table) can be read one packet at a
+						time from the character device. Likewise, packets written to the character device will
+						be injected into the kernel's network stack. For tun interfaces, the packets that are
+						read and written are IP packets. For tap interfaces, the packet format is Ethernet
+						frames.
+					</p>
+					<h1>Mailing list</h1>
+					<p>
+						There is a mailing list available through the Sourceforge project that is meant for
+						general discussion about the TunTap software, asking questions, reporting bugs etc. It
+						is called <code>tuntaposx-users</code>. If you are interested, you can <a
+						href="https://lists.sourceforge.net/lists/listinfo/tuntaposx-users">register</a> or have
+						a look at the <a
+						href="http://sourceforge.net/mailarchive/forum.php?forum_name=tuntaposx-users">archives</a>.
+					</p>
+					<h1>Donations</h1>
+					<p>
+						So far, I have spent my spare time to run this project. If you want to show your
+						gratitude or support further maintenance or development of the software, you can donate
+						either via the Sourceforge donation system or directly to me via PayPal, just click the
+						appropriate button below. In either case, your money enables me to buy copies of
+						upcoming Mac OS X releases as well as development machines. A huge thank you goes to the
+						nice people at <a href="http://www.mozilla.com">mozilla.com</a> who have given me the
+						Mac Mini I currently use as development machine.
+					</p>
+
+					<form action="https://www.paypal.com/cgi-bin/webscr" method="post">
+						<p>
+							<a href="http://sourceforge.net/donate/index.php?group_id=235725"><img
+							src="http://images.sourceforge.net/images/project-support.jpg" width="88"
+							height="32" alt="Sourceforge donation" /></a>
+
+							<input type="hidden" name="cmd" value="_xclick"/>
+							<input type="hidden" name="business" value="mattias.nissler@gmx.de"/>
+							<input type="hidden" name="item_name" value="TunTap development donations"/>
+							<input type="hidden" name="no_shipping" value="1"/>
+							<input type="hidden" name="no_note" value="1"/>
+							<input type="hidden" name="currency_code" value="EUR"/>
+							<input type="hidden" name="tax" value="0"/>
+							<input type="hidden" name="bn" value="PP-DonationsBF"/>
+							<input type="image" src="img/paypal_donation.gif" name="submit" alt="PayPal donation"/>
+						</p>
+					</form>
+				</div>
+			</div>
+		</div>
+		<div id="bottom">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="fineprint">
+			<span id="sourceforge-logo">
+				<a href="http://sourceforge.net">
+					<img src="http://sflogo.sourceforge.net/sflogo.php?group_id=235725&amp;type=3" width="125"
+					height="37" alt="SourceForge.net Logo"/>
+				</a>
+			</span>
+			<p>
+				Valid <a href="http://validator.w3.org/check?uri=referer">XHTML</a> and <a
+				href="http://jigsaw.w3.org/css-validator/check/referer">CSS</a><br/>
+				This project is hosted by <a href="http://sourceforge.net">sourceforge.net</a><br/>
+				Copyright &copy; 2008, 2009 Mattias Nissler &lt;mattias.nissler@gmx.de&gt;
+			</p>
+		</div>
+	</div>
+</body>
+</html>

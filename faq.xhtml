@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- vim: set ts=2 sw=2 tw=100 fenc=utf8 spell spelllang=en_us : -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<title>TunTap - Frequently Asked Questions</title>
+	<style type="text/css" media="all">@import "style.css";</style>
+</head>
+<body>
+	<div id="container">
+		<div id="title"></div>
+		<div id="subtitle"></div>
+		<div id="plug"></div>
+		<div id="top">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="header">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="main">
+			<div class="left"></div>
+			<div class="right"></div>
+			<div class="center">
+				<div class="content">
+					<div class="navigation">
+						<a href="index.xhtml">Home</a>
+						<a href="faq.xhtml">FAQ</a>
+						<a href="download.xhtml">Download</a>
+						<a href="development.xhtml">Development</a>
+					</div>
+					<h1>Frequently Asked Questions</h1>
+
+					<h3>Who is involved in this project?</h3>
+					<p>
+						Currently, there is only myself (Mattias Nissler) active in the maintenance of the
+						TunTap software. However, numerous other people have reported bugs, provided small
+						patches and most importantly, tested prerelease versions.
+					</p>
+
+					<h3>Why do you run this project?</h3>
+					<p>
+						When I still was using Mac OS X on a daily basis, I came across the need of tun and tap
+						devices for Mac OS X. Because nothing that suited my needs was available, I started this
+						project.
+					</p>
+
+					<h3>I tried installing the package, but it failed. What do I do?</h3>
+					<p>
+						First, make sure you exit all programs that might be using a tun or tap interface.
+						OpenVPN is one obvious candidate, but there may be others depending on what software you
+						run on your computer. If you still have problems, feel free to seek help on the mailing
+						list.
+					</p>
+
+					<h3>What is the startup item for?</h3>
+					<p>
+						The startup items load the kernel extensions at boot time. You can also go without the
+						startup items, but then you will have to load the kernel extensions manually.
+					</p>
+
+					<h3>I want to remove the software from my computer. How do I do that?</h3>
+					<p>
+						Unfortunately, Apple's installer packages do not provide a way to remove software.
+						Therefore, you will need to delete the files manually. Just remove the following
+						directories (you need to do this with Administrator privileges):
+					</p>
+					<ul>
+						<li><code>/Library/Extensions/tap.kext</code></li>
+						<li><code>/Library/Extensions/tun.kext</code></li>
+						<li><code>/Library/StartupItems/tap</code></li>
+						<li><code>/Library/StartupItems/tun</code></li>
+					</ul>
+					<p>
+						That's it!
+					</p>
+
+					<h3>I have a VPN connection using tap. Can I create an Ethernet bridge between the VPN
+					interface and a physical Ethernet interface?</h3>
+					<p>
+						The issue here is that Mac OS X does not have Ethernet bridging built in. The only
+						software I know about that claims to provide Ethernet bridging is <a
+						href="http://www.sustworks.com/site/prod_ipnrx_overview.html">IPNetRouterX</a> (note
+						that it is commercial, i.e. not free). However, I have not tried this myself, so I
+						cannot tell you if or how well it works. Note that setups similar to bridging can also
+						be achieved by using IP-level packet forwarding combined with Network Address
+						Translation (NAT). From what I have seen in the Darwin kernel, I think it should not be
+						too hard to create an Ethernet bridging kernel extension for Mac OS X by exploiting the
+						filtering KPI (see Apple's documentation). However, at the moment I do not have the time
+						an interest to do it myself ;-)
+					</p>
+
+					<h3>You screwed up, my computer crashed! How can I help fix this?</h3>
+					<p>
+						Well, sorry for that. While the software is generally quite stable, I appreciate any
+						reports that help me fix crashes. If you encounter a crash, please post a message to the
+						mailing list. State which TunTap and Mac OS X versions you use (if you do not run the
+						latest version, you should probably first upgrade to see whether the bug is already
+						fixed). Also include the contents of the <code>/Library/Logs/panic.log</code> file. It
+						includes a stack backtrace that helps finding out what your computer did when it
+						encountered the crash.
+					</p>
+
+					<h3>Loading the tun kernel extensions fails and my system log says "could not register
+					PF_INET protocol family: 17". WTF?</h3>
+					<p>
+						You probably have the Cisco Systems Anyconnect VPN software installed. At the moment,
+						this software causes a conflict because it contains an own tun kernel extension. I've
+						talked to a Cisco enginner who said Cisco would try and resolve the issues. However,
+						since then I have not received any updates on this.
+
+						In the mean time, you can use the following script for switching between the regular
+						tuntap installation and Cisco's flavor (contributed by Josh Berkus, thanks for that):
+					</p>
+					<pre>
+#!/usr/bin/perl
+
+# this script switches between the TUN drivers needed for Cisco and the drivers
+# needed for OpenVPN on Mac OSX.
+
+# usage: "vpnswitch cisco" or "vpnswitch open"
+
+# written by Josh Berkus 2009.  Freely offered to the public domain.
+# If your jurisdiction doesn't support that, then it is also available under the
+# BSD License.
+
+my ( $mode ) = @ARGV;
+
+if ( $mode =~ /^c/i ) {
+   system ("sudo kextunload /Library/Extensions/tun.kext");
+   system ("sudo kextunload /Library/Extensions/tap.kext");
+   system ("sudo /System/Library/StartupItems/CiscoTUN/CiscoTUN start");
+} elsif ( $mode =~ /^o/i ) {
+   system ("sudo /System/Library/StartupItems/CiscoTUN/CiscoTUN stop");
+   system ("sudo kextload /Library/Extensions/tun.kext");
+   system ("sudo kextload /Library/Extensions/tap.kext");
+} else {
+  print "missing parameter\n";
+}
+
+exit(0);
+					</pre>
+
+					<h3>I'm a developer and I try to read() and write() to the character devices. However, all
+					it gives me is an &quot;Input/Output error&quot;. Why is that?</h3>
+					<p>
+					  You can only read and write packets from and to the kernel while the corresponding
+						network interface is up. The setup sequence is as follows (using <code>tap0</code> as an
+						example):
+					</p>
+					<ul>
+						<li><code>open()</code> the character device <code>/dev/tap0</code>.</li>
+						<li>
+							Configure the network interface <code>tap0</code> and bring it up. Typically,
+							you'll also want to assign an IP address. Here is an example using
+							<code>ifconfig</code> (but you can also configure the device programatically using the
+							usual IOCTLs):
+							<pre>
+ifconfig tap0 10.1.2.3 up
+							</pre>
+						</li>
+						<li>
+							Once the interface has been brought up, you can use the <code>read()</code> and
+							<code>write()</code> functions on the character device's file descriptor to receive
+							or send a packet at a time.
+						</li>
+						<li>
+							When you're done, <code>close()</code> the character device. This will remove the
+							network interface from the system.
+						</li>
+					</ul>
+
+				</div>
+			</div>
+		</div>
+		<div id="bottom">
+			<div class="left"></div>
+			<div class="center"></div>
+			<div class="right"></div>
+		</div>
+		<div id="fineprint">
+			<span id="sourceforge-logo">
+				<a href="http://sourceforge.net">
+					<img src="http://sflogo.sourceforge.net/sflogo.php?group_id=235725&amp;type=3" width="125"
+					height="37" alt="SourceForge.net Logo"/>
+				</a>
+			</span>
+			<p>
+				Valid <a href="http://validator.w3.org/check?uri=referer">XHTML</a> and <a
+				href="http://jigsaw.w3.org/css-validator/check/referer">CSS</a><br/>
+				This project is hosted by <a href="http://sourceforge.net">sourceforge.net</a><br/>
+				Copyright &copy; 2008, 2009 Mattias Nissler &lt;mattias.nissler@gmx.de&gt;
+			</p>
+		</div>
+	</div>
+</body>
+</html>
