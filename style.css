@@ -18,6 +18,20 @@ body {
 	font-family: Helvetica, sans-serif;
 }
 
+#inactive-notice {
+	position: relative;
+	padding-top: 20px;
+	margin-left: auto;
+	margin-right: auto;
+	width: 720px;
+	color: red;
+	font-weight: bold;
+}
+
+#inactive-notice h1 {
+	color: red;
+}
+
 #container {
 	position: relative;
 	margin-left: auto;
